@@ -4,6 +4,7 @@
 #include <SoftwareSerial.h>
 #include "Protocentral_MAX30205.h"
 #include <PulseSensorPlayground.h>
+#include <LiquidCrystal_I2C.h>   // Add LCD library
 
 // -------- Sensor Objects --------
 MAX30205 tempSensor;
@@ -18,6 +19,9 @@ const int BUZZER_PIN = 7;
 
 // -------- Bluetooth (RX->2, TX->4) --------
 SoftwareSerial bluetooth(2, 4); // RX, TX
+
+// -------- LCD --------
+LiquidCrystal_I2C lcd(0x27, 16, 2);  // LCD address 0x27, 16 chars, 2 lines
 
 // -------- Data Buffers --------
 float tempReadings[10];
@@ -55,24 +59,43 @@ void setup() {
   } else {
     Serial.println("PulseSensor failed to start.");
   }
+
+  // Initialize LCD
+  lcd.init();
+  lcd.backlight();
+  lcd.clear();
+  lcd.print("System Starting");
 }
 
 void loop() {
   // --- Bluetooth receiving ---
   if (bluetooth.available()) {
     char incoming = bluetooth.read();
-    if (incoming == '0') {
+
+    if (incoming == '\r' || incoming == '\n') {
+      // Ignore newline or carriage return characters
+    } else if (incoming == '0') {
       buzzerMode = 0;
       Serial.println("Buzzer mode: OFF");
+      lcd.clear();
+      lcd.print("Buzzer mode: OFF");
     } else if (incoming == '1') {
       buzzerMode = 1;
       Serial.println("Buzzer mode: TEMP ONLY");
+      lcd.clear();
+      lcd.print("Buzzer mode: TEMP");
     } else if (incoming == '2') {
       buzzerMode = 2;
       Serial.println("Buzzer mode: BPM ONLY");
+      lcd.clear();
+      lcd.print("Buzzer mode: BPM");
     } else {
       Serial.print("Unknown command: ");
       Serial.println(incoming);
+      lcd.clear();
+      lcd.print("Unknown cmd:");
+      lcd.setCursor(0, 1);
+      lcd.print(incoming);
     }
   }
 
@@ -121,6 +144,15 @@ void loop() {
       String dataString = "Temp: " + String(tempMedian, 2) + (fahrenheittemp ? " °F" : " °C") + " | BPM: " + String(bpmMedian);
       bluetooth.println(dataString);
       Serial.println("Sent over BT: " + dataString);
+
+      // Update LCD with latest values too
+      lcd.clear();
+      lcd.print("T:");
+      lcd.print(tempMedian, 1);
+      lcd.print(fahrenheittemp ? "F" : "C");
+      lcd.setCursor(0, 1);
+      lcd.print("BPM:");
+      lcd.print(bpmMedian);
     }
   } else {
     Serial.println("Collecting readings...");
