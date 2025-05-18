@@ -1,44 +1,44 @@
 #include <Wire.h>
+#include "Protocentral_MAX30205.h"
 
-#define MAX30205_ADDRESS 0x48  // Default address if A0–A2 are GND
+MAX30205 tempSensor;
+const bool fahrenheittemp = false; // Set to false for Celsius
 
 void setup() {
   Serial.begin(9600);
-  Wire.begin();  // SDA = 20, SCL = 21 on Mega
-  Serial.println("MAX30205 Initialized...");
+  Wire.begin();
+  delay(100);
+
+  // Set the sensor's I2C address
+  tempSensor.sensorAddress = 0x4C;
+  tempSensor.begin();
+
+  // Try reading temperature to check if sensor works
+  float temp = tempSensor.getTemperature();
+  if (temp == 0.0) {
+    Serial.println("WARNING: Sensor reading 0.0°C. Check if temperature is realistic.");
+  } else {
+    Serial.println("Sensor initialized and responding.");
+  }
 }
 
 void loop() {
-  float temperature = readTemperature();
+  float temp = tempSensor.getTemperature();
 
-  if (temperature > -50.0) { // skip error value
-    Serial.print("Body Temperature: ");
-    Serial.print(temperature);
-    Serial.println(" °C");
+  if (temp == 0.0) {
+    Serial.println("Sensor read failed or temperature is 0.0°C.");
+  } else {
+    if (fahrenheittemp) {
+      temp = (temp * 1.8) + 32;
+      Serial.print(temp, 2);
+      Serial.println(" °F");
+    } else {
+      Serial.print(temp, 2);
+      Serial.println(" °C");
+    }
   }
 
   delay(1000);
 }
 
-float readTemperature() {
-  Wire.beginTransmission(MAX30205_ADDRESS);
-  Wire.write(0x00);  // Temperature register
-  if (Wire.endTransmission(false) != 0) {
-    Serial.println("I2C write failed");
-    return -100.0;
-  }
 
-  Wire.requestFrom(MAX30205_ADDRESS, 2);
-  if (Wire.available() < 2) {
-    Serial.println("I2C read failed");
-    return -100.0;
-  }
-
-  uint8_t msb = Wire.read();
-  uint8_t lsb = Wire.read();
-
-  int16_t raw = (msb << 8) | lsb;
-  raw >>= 3;  // 13-bit data
-
-  return raw * 0.0625; // Convert to Celsius
-}
