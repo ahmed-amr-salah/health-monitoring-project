@@ -50,7 +50,9 @@ float readTemperature() {
   uint8_t lsb = Wire.read();
 
   int16_t raw = (msb << 8) | lsb; // Combine bytes into 16-bit signed value
-  return raw * 0.00390625; // Correct scaling for normal mode
+  float reading = raw * 0.00390625; // Correct scaling for normal mode
+  reading = (reading - 21.0) * 12.0 / 9.0 + 21.0;
+  return reading;
 }
 
 void setup() {
